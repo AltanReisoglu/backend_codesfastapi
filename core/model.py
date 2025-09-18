@@ -15,15 +15,16 @@ from pymongo import MongoClient
 
 # Senin LLM importun
 from langchain.chat_models import init_chat_model
-
+SESSION_ID="abc123"
+OKUL_ADI="YILDIZ TEKNİK ÜNİVERSİTESİ"
 # ================================
 # ENV Yükleme
 # ================================
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")  # atlas ya da local bağlantı
-DB_NAME = os.getenv("DB_NAME", "rag_db")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "stock_market")
+DB_NAME = os.getenv("DB_NAME", "rag")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "ytuuni")
 INDEX_NAME = os.getenv("INDEX_NAME", "vector_index")
 
 model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
@@ -36,30 +37,64 @@ embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-Mi
 client = MongoClient(MONGO_URI)
 collection = client[DB_NAME][COLLECTION_NAME]
 
-vectorstore = MongoDBAtlasVectorSearch(
+"""vectorstore = MongoDBAtlasVectorSearch(
     collection=collection,
     embedding=embedding_model,
     index_name=INDEX_NAME,
-)
+)"""
 
-retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+#retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
+
+def get_vectorstore_for_school(school_name: str):
+    """
+    Her okul için ayrı koleksiyon/index seçilebilir.
+    """
+    collection = client[DB_NAME][COLLECTION_NAME]  # İstersen school_name'e göre ayrı collection seç
+    index_name = f"{school_name.replace(' ', '_').lower()}_index"  # örn: bogazici_universitesi_index
+
+    return MongoDBAtlasVectorSearch(
+        collection=collection,
+        embedding=embedding_model,
+        index_name=f"{COLLECTION_NAME}_index"
+    )
 
 # ================================
-# TOOL
+# TOOL (dinamik okul seçimi)
 # ================================
 @tool
+def retriever_tool(query: str,history=None) -> str:
+    """
+    Kullanıcı hangi okul hakkında bilgi istiyorsa,
+    o okulun vektör indeksinden döküman çeker.
+    """
+    
+    vectorstore = get_vectorstore_for_school(school_name=OKUL_ADI)
+    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+
+    docs = retriever.invoke(query)
+    if not docs:
+        return f"No relevant information found for {OKUL_ADI}."
+
+    results = []
+    for i, doc in enumerate(docs):
+        results.append(f"[{OKUL_ADI}] Document {i+1}:\n{doc.page_content}")
+    return "\n\n".join(results)
+# ================================
+# TOOL HEPSİ AYNI COLLECTION ALTINDA İSE BU.İKİNCİ SENARYO OKULARI ARYI COLLECTIONLARDA TUTUP GET_VECTOR_STREU' ÖZELLEŞTİREBİLİRİZ.
+# ================================
+"""@tool
 def retriever_tool(query: str) -> str:
-    """
+    '''
     This tool retrieves relevant documents about school information from vectorstore based on the user's query , if you don't know answer.    
-    """
+    '''
     docs = retriever.invoke(query)
     if not docs:
         return "No relevant information found."
     results = []
     for i, doc in enumerate(docs):
         results.append(f"Document {i+1}:\n{doc.page_content}")
-    return "\n\n".join(results)
+    return "\n\n".join(results)"""
 
 
 tools = [retriever_tool]
@@ -78,15 +113,16 @@ def should_continue(state: AgentState):
     return hasattr(result, "tool_calls") and len(result.tool_calls) > 0
 
 
-system_prompt = """Sen bir üniversite öğrencilerine yönelik akıllı asistansın.
+system_prompt = f""" Sen bir üniversite öğrencilerine yönelik akıllı asistansın.
 
 - Öğrencilerle sohbet edebilir, onların ders, ödev, kariyer, kampüs yaşamı ve kişisel gelişimle ilgili sorularına yanıt verirsin.
 - Cevaplarında arkadaşça, anlaşılır ve motive edici bir dil kullanırsın.
 - Konu hakkında yeterli bilgin varsa kendi bilginle yanıt verirsin.
 - Eğer bilgilerin güncel değilse veya kesinlik gerektiriyorsa, **retriever_tool** kullanarak dış kaynaktan araştırma yapar ve en doğru cevabı verirsin.
-- **retriever_tool**, yalnızca **İÜC (İstanbul Üniversitesi – Cerrahpaşa)** ile ilgili **akademik** veya **akreditasyon ve akredite programları** konularında kullanılmalıdır.
+- **retriever_tool**, yalnızca **{OKUL_ADI}** ile ilgili **akademik** veya **akreditasyon ve akredite programları** konularında kullanılmalıdır.
 - Gerektiğinde öğrenciyi düşünmeye teşvik eder, alternatif bakış açıları sunar ve pratik öneriler verirsin.
 - Yanıtların kısa, öz ama açıklayıcı olur; öğrenciyi boğmadan bilgi sağlarsın.
+
 """
 
 
