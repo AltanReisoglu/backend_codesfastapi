@@ -6,12 +6,13 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import MongoDBAtlasVectorSearch
 from pymongo import MongoClient
 import glob
+from langchain_huggingface import HuggingFaceEmbeddings
 # .env dosyasını yükleu
 load_dotenv()
 
 ##enpoint olarak ytü,boun,itü olabilir
 ######
-docs_path = r"C:\Users\bahaa\OneDrive\Masaüstü\gemini_app_2\backend\rag_docs\ytü"
+docs_path = r"\rag_docs\ytü"
 files = glob.glob(os.path.join(docs_path, "*"))
 
 
@@ -42,8 +43,8 @@ print(f"📄 Toplam {len(all_docs)} doküman yüklendi.")
 
 # Chunking
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=200
+    chunk_size=800,
+    chunk_overlap=100
 )
 docs_split = text_splitter.split_documents(all_docs)
 
@@ -55,7 +56,7 @@ embedding_model = HuggingFaceEmbeddings(
 # MongoDB bağlantısı
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "rag")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "ytuuni")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "ytu")
 
 client = MongoClient(MONGO_URI)
 collection = client[DB_NAME][COLLECTION_NAME]
@@ -65,7 +66,7 @@ vectorstore = MongoDBAtlasVectorSearch.from_documents(
     documents=docs_split,
     embedding=embedding_model,
     collection=collection,
-    index_name="vector_index"
+    index_name="ytu_search"
 )
 
 print("✅ MongoDB VectorStore güncellendi, tüm dosyalar eklendi.")
