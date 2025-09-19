@@ -7,16 +7,16 @@ from operator import add as add_messages
 
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage
-from langchain_community.embeddings import HuggingFaceEmbeddings
+#from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import MongoDBAtlasVectorSearch
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from pymongo import MongoClient
-
+from langchain_huggingface import HuggingFaceEmbeddings
 # Senin LLM importun
 from langchain.chat_models import init_chat_model
 SESSION_ID="abc123"
-OKUL_ADI="YILDIZ TEKNİK ÜNİVERSİTESİ"
+OKUL_ADI="İSTANBUL ÜNİVERSİTESİ - CERRAHPAŞA"
 
 
 load_dotenv()
@@ -132,7 +132,7 @@ system_prompt = f""" Sen bir üniversite öğrencilerine yönelik akıllı asist
 - Eğer bilgilerin güncel değilse veya kesinlik gerektiriyorsa, **retriever_tool** kullanarak dış kaynaktan araştırma yapar ve en doğru cevabı verirsin.
 - **retriever_tool**, yalnızca **{OKUL_ADI}** ile ilgili **akademik** konularında kullanılmalıdır.
 - Gerektiğinde öğrenciyi düşünmeye teşvik eder, alternatif bakış açıları sunar ve pratik öneriler verirsin ama konuşmalarını kısa tutmaya çalışırsın.
-- Yanıtların kısa, öz ama açıklayıcı olur; öğrenciyi boğmadan bilgi sağlarsın.
+- Yanıtların kısa, öz ama açıklayıcı olur; öğrenciyi boğmadan bilgi sağlarsın.ve yalnızca cevaplara yanıt ver.işlem aşamalarını gösterme.
 
 """
 
