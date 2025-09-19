@@ -17,15 +17,26 @@ from pymongo import MongoClient
 from langchain.chat_models import init_chat_model
 SESSION_ID="abc123"
 OKUL_ADI="YILDIZ TEKNİK ÜNİVERSİTESİ"
-# ================================
-# ENV Yükleme
-# ================================
-load_dotenv()
 
+
+load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")  # atlas ya da local bağlantı
 DB_NAME = os.getenv("DB_NAME", "rag")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "ytuuni")
-INDEX_NAME = os.getenv("INDEX_NAME", "vector_index")
+
+
+if OKUL_ADI=="YILDIZ TEKNİK ÜNİVERSİTESİ":
+    COLLECTION_NAME="ytu"
+    INDEX_NAME = "ytu_search"
+elif OKUL_ADI=="BOGAZİÇİ ÜNİVERSİTESİ":
+    COLLECTION_NAME="boun"
+    INDEX_NAME = "boun_search"
+elif OKUL_ADI=="İSTANBUL ÜNİVERSİTESİ - CERRAHPAŞA":
+    COLLECTION_NAME="iuc"
+    INDEX_NAME = "iuc_search"
+
+
+
+
 
 model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
 
@@ -51,12 +62,12 @@ def get_vectorstore_for_school(school_name: str):
     Her okul için ayrı koleksiyon/index seçilebilir.
     """
     collection = client[DB_NAME][COLLECTION_NAME]  # İstersen school_name'e göre ayrı collection seç
-    index_name = f"{school_name.replace(' ', '_').lower()}_index"  # örn: bogazici_universitesi_index
+      # örn: bogazici_universitesi_index
 
     return MongoDBAtlasVectorSearch(
         collection=collection,
         embedding=embedding_model,
-        index_name=f"{COLLECTION_NAME}_index"
+        index_name=INDEX_NAME
     )
 
 # ================================
@@ -119,8 +130,8 @@ system_prompt = f""" Sen bir üniversite öğrencilerine yönelik akıllı asist
 - Cevaplarında arkadaşça, anlaşılır ve motive edici bir dil kullanırsın.
 - Konu hakkında yeterli bilgin varsa kendi bilginle yanıt verirsin.
 - Eğer bilgilerin güncel değilse veya kesinlik gerektiriyorsa, **retriever_tool** kullanarak dış kaynaktan araştırma yapar ve en doğru cevabı verirsin.
-- **retriever_tool**, yalnızca **{OKUL_ADI}** ile ilgili **akademik** veya **akreditasyon ve akredite programları** konularında kullanılmalıdır.
-- Gerektiğinde öğrenciyi düşünmeye teşvik eder, alternatif bakış açıları sunar ve pratik öneriler verirsin.
+- **retriever_tool**, yalnızca **{OKUL_ADI}** ile ilgili **akademik** konularında kullanılmalıdır.
+- Gerektiğinde öğrenciyi düşünmeye teşvik eder, alternatif bakış açıları sunar ve pratik öneriler verirsin ama konuşmalarını kısa tutmaya çalışırsın.
 - Yanıtların kısa, öz ama açıklayıcı olur; öğrenciyi boğmadan bilgi sağlarsın.
 
 """
